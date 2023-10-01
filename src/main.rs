@@ -8,8 +8,8 @@ use investment::Investment;
 struct Args {
     #[arg(short, long, help = "Initial amount for the investing")]
     amount: usize,
-    #[arg(short, long, help = "Annual percentage of profit")]
-    profit: f64,
+    #[arg(short, long, help = "Annual percentage of interest")]
+    interest: f64,
     #[arg(short, long, help = "Investment years")]
     years: i64,
     #[arg(short, long, help = "Extra contribution per year")]
@@ -22,7 +22,7 @@ fn main() {
         args.amount as f64,
         args.years,
         args.contribution as f64,
-        args.profit,
+        args.interest,
     );
     let investment_status = investment.simulate();
 
