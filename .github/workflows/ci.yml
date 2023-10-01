@@ -49,12 +49,11 @@ jobs:
           toolchain: nightly
           override: true
           components: clippy
-          profile: minimal
 
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
+      - uses: actions-rs/clippy-check@v1
         with:
-          command: clippy -- -D warnings
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
 
   test:
     name: Tests
