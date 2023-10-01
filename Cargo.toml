@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive", "cargo"] }
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"
+assert_float_eq = "1.1.3" 
