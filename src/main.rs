@@ -12,13 +12,18 @@ struct Args {
     profit: f64,
     #[arg(short, long, help = "Investment years")]
     years: i64,
-    #[arg(short, long, help = "Years with negative return")]
-    negative: i64,
+    #[arg(short, long, help = "Extra contribution per year")]
+    contribution: usize,
 }
 
 fn main() {
     let args = Args::parse();
-    let investment = Investment::new(args.amount as f64, args.years, 0.0, args.profit);
+    let investment = Investment::new(
+        args.amount as f64,
+        args.years,
+        args.contribution as f64,
+        args.profit,
+    );
     let investment_status = investment.simulate();
 
     for status in investment_status.iter() {

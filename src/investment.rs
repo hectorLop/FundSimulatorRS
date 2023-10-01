@@ -1,51 +1,43 @@
 pub struct Investment {
-    amount: f64,
+    deposit: f64,
     years: i64,
-    _annual_contribution: f64,
-    annual_profitability: f64,
+    annual_contribution: f64,
+    interest_rate: f64,
 }
 
 impl Investment {
-    pub fn new(
-        amount: f64,
-        years: i64,
-        _annual_contribution: f64,
-        annual_profitability: f64,
-    ) -> Self {
+    pub fn new(deposit: f64, years: i64, annual_contribution: f64, interest_rate: f64) -> Self {
         Investment {
-            amount,
+            deposit,
             years,
-            _annual_contribution,
-            annual_profitability,
+            annual_contribution,
+            interest_rate,
         }
     }
 
     pub fn simulate(&self) -> Vec<InvestmentStatus> {
         let mut simulation_results: Vec<InvestmentStatus> = Vec::new();
-        let mut status: InvestmentStatus;
         for year in 0..self.years {
             if year == 0 {
-                status = InvestmentStatus::new(
+                simulation_results.push(InvestmentStatus::new(
                     year,
-                    self.amount,
-                    self.amount,
-                    self.annual_profitability,
+                    self.deposit + self.annual_contribution,
+                    self.deposit + self.annual_contribution,
+                    self.interest_rate,
                     0.2,
-                );
+                ));
             } else {
                 let last_year_result = simulation_results
                     .last()
                     .unwrap_or_else(|| panic!("Error in year {}", year));
-                status = InvestmentStatus::new(
+                simulation_results.push(InvestmentStatus::new(
                     year,
-                    self.amount,
-                    last_year_result.gross_profit(),
-                    self.annual_profitability,
+                    last_year_result.deposited + self.annual_contribution,
+                    last_year_result.gross_profit() + self.annual_contribution,
+                    self.interest_rate,
                     0.2,
-                );
+                ));
             }
-
-            simulation_results.push(status);
         }
 
         simulation_results
@@ -60,56 +52,50 @@ impl Investment {
         -------------------------------------------------------------
         After {} years, these are the total results of the Investment:
         --------------------------------------------------------------
-        Initial amount: {}
+        Total deposited: {}
         Interest gross profit: {}
         Interest net profit: {}
         ",
             self.years,
-            self.amount,
-            last_year_result.gross_profit() - self.amount,
-            last_year_result.net_profit() - self.amount
+            last_year_result.deposited,
+            last_year_result.gross_profit() - last_year_result.deposited,
+            last_year_result.net_profit() - last_year_result.deposited
         )
     }
 }
 
 pub struct InvestmentStatus {
     year: i64,
-    initial_investment_amount: f64,
-    amount: f64,
-    profitability: f64,
+    deposited: f64,
+    balance: f64,
+    interest_rate: f64,
     taxes: f64,
 }
 
 impl InvestmentStatus {
-    fn new(
-        year: i64,
-        initial_investment_amount: f64,
-        amount: f64,
-        profitability: f64,
-        taxes: f64,
-    ) -> Self {
+    fn new(year: i64, deposited: f64, balance: f64, interest_rate: f64, taxes: f64) -> Self {
         InvestmentStatus {
             year,
-            initial_investment_amount,
-            amount,
-            profitability,
+            deposited,
+            balance,
+            interest_rate,
             taxes,
         }
     }
 
     pub fn interest(&self) -> f64 {
-        self.amount * self.profitability
+        self.balance * self.interest_rate
     }
 
     pub fn gross_profit(&self) -> f64 {
-        self.amount + self.interest()
+        self.balance + self.interest()
     }
 
     fn net_profit(&self) -> f64 {
-        if self.gross_profit() < self.initial_investment_amount {
+        if self.gross_profit() < self.deposited {
             return self.gross_profit();
         }
-        let profit = self.gross_profit() - self.initial_investment_amount;
+        let profit = self.gross_profit() - self.deposited;
         self.gross_profit() - (profit * self.taxes)
     }
 
@@ -119,13 +105,13 @@ impl InvestmentStatus {
         -----------------
         | YEAR {}
         -----------------
-        Total contributions: {}
+        Total deposited: {}
         Interest: {}
-        Gross profit: {}
-        Net profit: {}
+        Gross balance: {}
+        Net balance: {}
         ",
             self.year,
-            self.amount,
+            self.deposited,
             self.interest(),
             self.gross_profit(),
             self.net_profit()
@@ -185,6 +171,40 @@ mod test {
             InvestmentStatus::new(0, 10000.0, 10000.0, 0.05, 0.2),
             InvestmentStatus::new(0, 10000.0, 10500.0, 0.05, 0.2),
             InvestmentStatus::new(0, 10000.0, 11025.0, 0.05, 0.2),
+        ];
+
+        for (i, result) in investment_results.iter().enumerate() {
+            assert_f64_near!(result.interest(), expected[i].interest());
+            assert_f64_near!(result.gross_profit(), expected[i].gross_profit());
+            assert_f64_near!(result.net_profit(), expected[i].net_profit());
+        }
+    }
+
+    #[test]
+    fn test_investment_simulation_with_annual_contribution() {
+        let investment = Investment::new(10000.0, 3, 3600.0, 0.05);
+        let investment_results = investment.simulate();
+        let expected: [InvestmentStatus; 3] = [
+            InvestmentStatus::new(0, 13600.0, 13600.0, 0.05, 0.2),
+            InvestmentStatus::new(0, 17200.0, 17880.0, 0.05, 0.2),
+            InvestmentStatus::new(0, 20800.0, 22374.0, 0.05, 0.2),
+        ];
+
+        for (i, result) in investment_results.iter().enumerate() {
+            assert_f64_near!(result.interest(), expected[i].interest());
+            assert_f64_near!(result.gross_profit(), expected[i].gross_profit());
+            assert_f64_near!(result.net_profit(), expected[i].net_profit());
+        }
+    }
+
+    #[test]
+    fn test_investment_simulation_with_annual_contribution_and_negative_rates() {
+        let investment = Investment::new(10000.0, 3, 3600.0, -0.05);
+        let investment_results = investment.simulate();
+        let expected: [InvestmentStatus; 3] = [
+            InvestmentStatus::new(0, 13600.0, 13600.0, -0.05, 0.2),
+            InvestmentStatus::new(0, 17200.0, 16520.0, -0.05, 0.2),
+            InvestmentStatus::new(0, 20800.0, 19294.0, -0.05, 0.2),
         ];
 
         for (i, result) in investment_results.iter().enumerate() {
