@@ -4,7 +4,7 @@ name: CI
 
 jobs:
   build:
-    name: Check rust
+    name: Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -21,7 +21,7 @@ jobs:
           command: check
 
   format-check:
-    name: Format check
+    name: Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -51,14 +51,13 @@ jobs:
           components: clippy
           profile: minimal
 
-      - name: Annotate commit with clippy warnings
-        uses: actions-rs/clippy-check@v1
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+          command: clippy -- -D warnings
 
   test:
-    name: Run tests
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
