@@ -1,12 +1,19 @@
+use crate::types::PositiveFloat;
+
 pub struct Investment {
-    deposit: f64,
-    years: i64,
-    annual_contribution: f64,
+    deposit: PositiveFloat,
+    years: usize,
+    annual_contribution: PositiveFloat,
     interest_rate: f64,
 }
 
 impl Investment {
-    pub fn new(deposit: f64, years: i64, annual_contribution: f64, interest_rate: f64) -> Self {
+    pub fn new(
+        deposit: PositiveFloat,
+        years: usize,
+        annual_contribution: PositiveFloat,
+        interest_rate: f64,
+    ) -> Self {
         Investment {
             deposit,
             years,
@@ -17,14 +24,17 @@ impl Investment {
 
     pub fn simulate(&self) -> Vec<InvestmentStatus> {
         let mut simulation_results: Vec<InvestmentStatus> = Vec::new();
+        let taxes: PositiveFloat = PositiveFloat(0.2);
         for year in 0..self.years {
             if year == 0 {
                 simulation_results.push(InvestmentStatus::new(
                     year,
-                    self.deposit + self.annual_contribution,
-                    self.deposit + self.annual_contribution,
+                    (self.deposit.0 + self.annual_contribution.0)
+                        .try_into()
+                        .expect("The deposited money cannot be negative"),
+                    self.deposit.0 + self.annual_contribution.0,
                     self.interest_rate,
-                    0.2,
+                    taxes,
                 ));
             } else {
                 let last_year_result = simulation_results
@@ -32,10 +42,12 @@ impl Investment {
                     .unwrap_or_else(|| panic!("Error in year {}", year));
                 simulation_results.push(InvestmentStatus::new(
                     year,
-                    last_year_result.deposited + self.annual_contribution,
-                    last_year_result.gross_profit() + self.annual_contribution,
+                    (last_year_result.deposited.0 + self.annual_contribution.0)
+                        .try_into()
+                        .expect("The deposited money cannot be negative"),
+                    last_year_result.gross_profit() + self.annual_contribution.0,
                     self.interest_rate,
-                    0.2,
+                    taxes,
                 ));
             }
         }
@@ -57,23 +69,29 @@ impl Investment {
         Interest net profit: {}
         ",
             self.years,
-            last_year_result.deposited,
-            last_year_result.gross_profit() - last_year_result.deposited,
-            last_year_result.net_profit() - last_year_result.deposited
+            last_year_result.deposited.0,
+            last_year_result.gross_profit() - last_year_result.deposited.0,
+            last_year_result.net_profit() - last_year_result.deposited.0
         )
     }
 }
 
 pub struct InvestmentStatus {
-    year: i64,
-    deposited: f64,
+    year: usize,
+    deposited: PositiveFloat,
     balance: f64,
     interest_rate: f64,
-    taxes: f64,
+    taxes: PositiveFloat,
 }
 
 impl InvestmentStatus {
-    fn new(year: i64, deposited: f64, balance: f64, interest_rate: f64, taxes: f64) -> Self {
+    fn new(
+        year: usize,
+        deposited: PositiveFloat,
+        balance: f64,
+        interest_rate: f64,
+        taxes: PositiveFloat,
+    ) -> Self {
         InvestmentStatus {
             year,
             deposited,
@@ -92,11 +110,11 @@ impl InvestmentStatus {
     }
 
     fn net_profit(&self) -> f64 {
-        if self.gross_profit() < self.deposited {
+        if self.gross_profit() < self.deposited.0 {
             return self.gross_profit();
         }
-        let profit = self.gross_profit() - self.deposited;
-        self.gross_profit() - (profit * self.taxes)
+        let profit = self.gross_profit() - self.deposited.0;
+        self.gross_profit() - (profit * self.taxes.0)
     }
 
     pub fn results(&self) -> String {
@@ -111,7 +129,7 @@ impl InvestmentStatus {
         Net balance: {}
         ",
             self.year,
-            self.deposited,
+            self.deposited.0,
             self.interest(),
             self.gross_profit(),
             self.net_profit()
@@ -121,12 +139,18 @@ impl InvestmentStatus {
 
 #[cfg(test)]
 mod test {
-    use super::{Investment, InvestmentStatus};
+    use super::{Investment, InvestmentStatus, PositiveFloat};
     use assert_float_eq::{afe_is_f64_near, afe_near_error_msg, assert_f64_near};
 
     #[test]
     fn test_positive_profit_computation() {
-        let status = InvestmentStatus::new(1, 10000.0, 10000.0, 0.05, 0.2);
+        let status = InvestmentStatus::new(
+            1,
+            PositiveFloat::try_from(10000.0).unwrap(),
+            10000.0,
+            0.05,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
         assert_f64_near!(status.interest(), 500.0);
         assert_f64_near!(status.gross_profit(), 10500.0);
         assert_f64_near!(status.net_profit(), 10400.0);
@@ -134,7 +158,13 @@ mod test {
 
     #[test]
     fn test_negative_profit_computation() {
-        let status = InvestmentStatus::new(1, 10000.0, 10000.0, -0.05, 0.2);
+        let status = InvestmentStatus::new(
+            1,
+            PositiveFloat::try_from(10000.0).unwrap(),
+            10000.0,
+            -0.05,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
         assert_f64_near!(status.interest(), -500.0);
         assert_f64_near!(status.gross_profit(), 9500.0);
         assert_f64_near!(status.net_profit(), 9500.0);
@@ -142,22 +172,46 @@ mod test {
 
     #[test]
     fn test_profit_computation() {
-        let status = InvestmentStatus::new(0, 10000.0, 10000.0, 0.05, 0.2);
+        let status = InvestmentStatus::new(
+            0,
+            PositiveFloat::try_from(10000.0).unwrap(),
+            10000.0,
+            0.05,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
         assert_f64_near!(status.interest(), 500.0);
         assert_f64_near!(status.gross_profit(), 10500.0);
         assert_f64_near!(status.net_profit(), 10400.0);
 
-        let status_second_year = InvestmentStatus::new(1, 10000.0, 10500.0, 0.05, 0.2);
+        let status_second_year = InvestmentStatus::new(
+            1,
+            PositiveFloat::try_from(10000.0).unwrap(),
+            10500.0,
+            0.05,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
         assert_f64_near!(status_second_year.interest(), 525.0);
         assert_f64_near!(status_second_year.gross_profit(), 11025.0);
         assert_f64_near!(status_second_year.net_profit(), 10820.0);
 
-        let status_third_year = InvestmentStatus::new(2, 10000.0, 11025.0, 0.01, 0.2);
+        let status_third_year = InvestmentStatus::new(
+            2,
+            PositiveFloat::try_from(10000.0).unwrap(),
+            11025.0,
+            0.01,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
         assert_f64_near!(status_third_year.interest(), 110.25);
         assert_f64_near!(status_third_year.gross_profit(), 11135.25);
         assert_f64_near!(status_third_year.net_profit(), 10908.2);
 
-        let status_fourth_year = InvestmentStatus::new(3, 10000.0, 11135.25, -0.05, 0.2);
+        let status_fourth_year = InvestmentStatus::new(
+            3,
+            PositiveFloat::try_from(10000.0).unwrap(),
+            11135.25,
+            -0.05,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
         assert_f64_near!(status_fourth_year.interest(), -556.7625);
         assert_f64_near!(status_fourth_year.gross_profit(), 10578.4875);
         assert_f64_near!(status_fourth_year.net_profit(), 10462.79);
@@ -165,12 +219,35 @@ mod test {
 
     #[test]
     fn test_investment_simulation() {
-        let investment = Investment::new(10000.0, 3, 0.0, 0.05);
+        let investment = Investment::new(
+            PositiveFloat::try_from(10000.0).unwrap(),
+            3,
+            PositiveFloat::try_from(0.0).unwrap(),
+            0.05,
+        );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
-            InvestmentStatus::new(0, 10000.0, 10000.0, 0.05, 0.2),
-            InvestmentStatus::new(0, 10000.0, 10500.0, 0.05, 0.2),
-            InvestmentStatus::new(0, 10000.0, 11025.0, 0.05, 0.2),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(10000.0).unwrap(),
+                10000.0,
+                0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(10000.0).unwrap(),
+                10500.0,
+                0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(10000.0).unwrap(),
+                11025.0,
+                0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
         ];
 
         for (i, result) in investment_results.iter().enumerate() {
@@ -182,12 +259,35 @@ mod test {
 
     #[test]
     fn test_investment_simulation_with_annual_contribution() {
-        let investment = Investment::new(10000.0, 3, 3600.0, 0.05);
+        let investment = Investment::new(
+            PositiveFloat::try_from(10000.0).unwrap(),
+            3,
+            PositiveFloat::try_from(3600.0).unwrap(),
+            0.05,
+        );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
-            InvestmentStatus::new(0, 13600.0, 13600.0, 0.05, 0.2),
-            InvestmentStatus::new(0, 17200.0, 17880.0, 0.05, 0.2),
-            InvestmentStatus::new(0, 20800.0, 22374.0, 0.05, 0.2),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(13600.0).unwrap(),
+                13600.0,
+                0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(17200.0).unwrap(),
+                17880.0,
+                0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(20800.0).unwrap(),
+                22374.0,
+                0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
         ];
 
         for (i, result) in investment_results.iter().enumerate() {
@@ -199,12 +299,35 @@ mod test {
 
     #[test]
     fn test_investment_simulation_with_annual_contribution_and_negative_rates() {
-        let investment = Investment::new(10000.0, 3, 3600.0, -0.05);
+        let investment = Investment::new(
+            PositiveFloat::try_from(10000.0).unwrap(),
+            3,
+            PositiveFloat::try_from(3600.0).unwrap(),
+            -0.05,
+        );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
-            InvestmentStatus::new(0, 13600.0, 13600.0, -0.05, 0.2),
-            InvestmentStatus::new(0, 17200.0, 16520.0, -0.05, 0.2),
-            InvestmentStatus::new(0, 20800.0, 19294.0, -0.05, 0.2),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(13600.0).unwrap(),
+                13600.0,
+                -0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(17200.0).unwrap(),
+                16520.0,
+                -0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
+            InvestmentStatus::new(
+                0,
+                PositiveFloat::try_from(20800.0).unwrap(),
+                19294.0,
+                -0.05,
+                PositiveFloat::try_from(0.2).unwrap(),
+            ),
         ];
 
         for (i, result) in investment_results.iter().enumerate() {

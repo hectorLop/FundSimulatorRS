@@ -1,7 +1,9 @@
 use clap::{arg, command, Parser};
 
 mod investment;
+mod types;
 use investment::Investment;
+use types::PositiveFloat;
 
 #[derive(Parser)]
 #[command(about = "Simulate index funds behaviour!")]
@@ -11,7 +13,7 @@ struct Args {
     #[arg(short, long, help = "Annual percentage of interest")]
     interest: f64,
     #[arg(short, long, help = "Investment years")]
-    years: i64,
+    years: usize,
     #[arg(short, long, help = "Extra contribution per year")]
     contribution: usize,
 }
@@ -19,9 +21,9 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let investment = Investment::new(
-        args.amount as f64,
+        PositiveFloat::try_from(args.amount as f64).unwrap(),
         args.years,
-        args.contribution as f64,
+        PositiveFloat::try_from(args.contribution as f64).unwrap(),
         args.interest,
     );
     let investment_status = investment.simulate();
