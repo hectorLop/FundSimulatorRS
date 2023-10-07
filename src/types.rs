@@ -23,17 +23,32 @@ impl TryFrom<f64> for PositiveFloat {
 mod test {
     use super::PositiveFloat;
     use claim::{assert_err, assert_ok_eq};
-    use pretty_assertions::assert_eq;
+    use proptest::num::f64::{NEGATIVE, POSITIVE};
+    use proptest::test_runner::TestRunner;
 
     #[test]
     fn test_positive_float_creation() {
-        let positive_float = PositiveFloat::try_from(10.0);
-        assert_ok_eq!(positive_float, PositiveFloat(10.0));
+        let mut runner = TestRunner::default();
+
+        runner
+            .run(&POSITIVE, |val| {
+                let positive_float = PositiveFloat::try_from(val);
+                assert_ok_eq!(positive_float, PositiveFloat(val));
+                Ok(())
+            })
+            .unwrap();
     }
 
     #[test]
     fn test_positive_float_error() {
-        let invalid_float = PositiveFloat::try_from(-10.0);
-        assert_err!(invalid_float);
+        let mut runner = TestRunner::default();
+
+        runner
+            .run(&NEGATIVE, |val| {
+                let invalid_float = PositiveFloat::try_from(val);
+                assert_err!(invalid_float);
+                Ok(())
+            })
+            .unwrap();
     }
 }
