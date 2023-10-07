@@ -21,25 +21,19 @@ impl TryFrom<f64> for PositiveFloat {
 
 #[cfg(test)]
 mod test {
-    use super::{PositiveFloat, PositiveFloatError};
+    use super::PositiveFloat;
+    use claim::{assert_err, assert_ok_eq};
     use pretty_assertions::assert_eq;
 
     #[test]
     fn test_positive_float_creation() {
         let positive_float = PositiveFloat::try_from(10.0);
-
-        assert!(positive_float.is_ok());
-        assert_eq!(positive_float.unwrap(), PositiveFloat(10.0))
+        assert_ok_eq!(positive_float, PositiveFloat(10.0));
     }
 
     #[test]
     fn test_positive_float_error() {
         let invalid_float = PositiveFloat::try_from(-10.0);
-
-        assert!(invalid_float.is_err());
-        assert_eq!(
-            invalid_float.unwrap_err(),
-            PositiveFloatError("-10.00 is a negative float.".to_string())
-        );
+        assert_err!(invalid_float);
     }
 }
