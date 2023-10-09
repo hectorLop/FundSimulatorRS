@@ -20,35 +20,53 @@ impl TryFrom<f64> for PositiveFloat {
 }
 
 #[cfg(test)]
+mod faker {
+    use super::PositiveFloat;
+    use fake::{Dummy, Faker};
+
+    impl Dummy<Faker> for PositiveFloat {
+        fn dummy_with_rng<R: fake::Rng + ?Sized>(_: &Faker, rng: &mut R) -> Self {
+            Self(rng.gen_range(0.0..100000000000000000.0))
+        }
+    }
+}
+
+#[cfg(test)]
 mod test {
     use super::PositiveFloat;
-    use claim::{assert_err, assert_ok_eq};
-    use proptest::num::f64::{NEGATIVE, POSITIVE};
-    use proptest::test_runner::TestRunner;
+    use claim::assert_ok_eq;
+    use rand::Rng;
 
-    #[test]
-    fn test_positive_float_creation() {
-        let mut runner = TestRunner::default();
+    #[derive(Clone, Debug)]
+    struct ValidNumberFixture(pub f64);
 
-        runner
-            .run(&POSITIVE, |val| {
-                let positive_float = PositiveFloat::try_from(val);
-                assert_ok_eq!(positive_float, PositiveFloat(val));
-                Ok(())
-            })
-            .unwrap();
+    #[derive(Clone, Debug)]
+    struct InvalidNumberFixture(pub f64);
+
+    impl quickcheck::Arbitrary for ValidNumberFixture {
+        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
+            let mut rng = rand::thread_rng();
+            Self(rng.gen_range(0.0..10000000000.0))
+        }
     }
 
-    #[test]
-    fn test_positive_float_error() {
-        let mut runner = TestRunner::default();
+    impl quickcheck::Arbitrary for InvalidNumberFixture {
+        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
+            let mut rng = rand::thread_rng();
+            Self(rng.gen_range(-10000000000.0..-0.000001))
+        }
+    }
 
-        runner
-            .run(&NEGATIVE, |val| {
-                let invalid_float = PositiveFloat::try_from(val);
-                assert_err!(invalid_float);
-                Ok(())
-            })
-            .unwrap();
+    #[quickcheck_macros::quickcheck]
+    fn test_positive_float_creation(valid_number: ValidNumberFixture) -> bool {
+        let positive_float = PositiveFloat::try_from(valid_number.0);
+        assert_ok_eq!(positive_float, PositiveFloat(valid_number.0));
+        positive_float.is_ok()
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn test_positive_float_error(invalid_number: InvalidNumberFixture) -> bool {
+        let invalid_float = PositiveFloat::try_from(invalid_number.0);
+        invalid_float.is_err()
     }
 }

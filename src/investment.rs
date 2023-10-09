@@ -76,6 +76,8 @@ impl Investment {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(test, derive(fake::Dummy))]
 pub struct InvestmentStatus {
     year: usize,
     deposited: PositiveFloat,
@@ -141,6 +143,30 @@ impl InvestmentStatus {
 mod test {
     use super::{Investment, InvestmentStatus, PositiveFloat};
     use assert_float_eq::{afe_is_f64_near, afe_near_error_msg, assert_f64_near};
+    use fake::{Fake, Faker};
+
+    impl quickcheck::Arbitrary for InvestmentStatus {
+        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
+            Faker.fake()
+        }
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn test_investment_status_interest(status: InvestmentStatus) -> bool {
+        // Interest < balance
+        status.interest() < status.balance
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn test_investment_status_gross_profit(status: InvestmentStatus) -> bool {
+        // Gross profit > interest
+        status.gross_profit() > status.interest()
+    }
+    #[quickcheck_macros::quickcheck]
+    fn test_investment_status_net_profit(status: InvestmentStatus) -> bool {
+        // Net profit < Gross profit
+        status.net_profit() <= status.gross_profit()
+    }
 
     #[test]
     fn test_positive_profit_computation() {
