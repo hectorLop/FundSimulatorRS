@@ -1,3 +1,5 @@
+use fake::{Dummy, Faker};
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PositiveFloat(pub f64);
 
@@ -19,15 +21,9 @@ impl TryFrom<f64> for PositiveFloat {
     }
 }
 
-#[cfg(test)]
-mod faker {
-    use super::PositiveFloat;
-    use fake::{Dummy, Faker};
-
-    impl Dummy<Faker> for PositiveFloat {
-        fn dummy_with_rng<R: fake::Rng + ?Sized>(_: &Faker, rng: &mut R) -> Self {
-            Self(rng.gen_range(0.0..100000000000000000.0))
-        }
+impl Dummy<Faker> for PositiveFloat {
+    fn dummy_with_rng<R: fake::Rng + ?Sized>(_: &Faker, rng: &mut R) -> Self {
+        Self(rng.gen_range(0.0..100000000000000000.0))
     }
 }
 

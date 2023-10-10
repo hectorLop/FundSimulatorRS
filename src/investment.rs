@@ -1,7 +1,10 @@
 use crate::types::PositiveFloat;
+use fake::Dummy;
 
+#[derive(Debug, Clone, Copy, Dummy)]
 pub struct Investment {
     deposit: PositiveFloat,
+    #[dummy(faker = "1..1000")]
     years: usize,
     annual_contribution: PositiveFloat,
     interest_rate: f64,
@@ -151,20 +154,55 @@ mod test {
         }
     }
 
+    impl quickcheck::Arbitrary for Investment {
+        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
+            Faker.fake()
+        }
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn test_investment_simulate(investment: Investment) -> bool {
+        let results = investment.simulate();
+
+        for i in 0..results.len() {
+            if i != 0 {
+                if investment.interest_rate > 0.0 {
+                    let conditions: [bool; 3] = [
+                        results[i].interest() > results[i - 1].interest(),
+                        results[i].gross_profit() > results[i - 1].gross_profit(),
+                        results[i].net_profit() > results[i - 1].net_profit(),
+                    ];
+
+                    if !conditions.iter().all(|&x| x == true) {
+                        return false;
+                    }
+                } else {
+                    let conditions: [bool; 3] = [
+                        results[i].interest() < results[i - 1].interest(),
+                        results[i].gross_profit() < results[i - 1].gross_profit(),
+                        results[i].net_profit() < results[i - 1].net_profit(),
+                    ];
+
+                    if !conditions.iter().all(|&x| x == true) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+
     #[quickcheck_macros::quickcheck]
     fn test_investment_status_interest(status: InvestmentStatus) -> bool {
-        // Interest < balance
         status.interest() < status.balance
     }
 
     #[quickcheck_macros::quickcheck]
     fn test_investment_status_gross_profit(status: InvestmentStatus) -> bool {
-        // Gross profit > interest
         status.gross_profit() > status.interest()
     }
     #[quickcheck_macros::quickcheck]
     fn test_investment_status_net_profit(status: InvestmentStatus) -> bool {
-        // Net profit < Gross profit
         status.net_profit() <= status.gross_profit()
     }
 
