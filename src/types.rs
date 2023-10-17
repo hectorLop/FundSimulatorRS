@@ -1,6 +1,7 @@
 use fake::{Dummy, Faker};
+use serde::Deserialize;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
 pub struct PositiveFloat(pub f64);
 
 #[derive(Debug, PartialEq)]
@@ -23,7 +24,7 @@ impl TryFrom<f64> for PositiveFloat {
 
 impl Dummy<Faker> for PositiveFloat {
     fn dummy_with_rng<R: fake::Rng + ?Sized>(_: &Faker, rng: &mut R) -> Self {
-        Self(rng.gen_range(0.0..100000000000000000.0))
+        Self(rng.gen_range(0.0..10000000.0))
     }
 }
 

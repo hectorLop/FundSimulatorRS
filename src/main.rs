@@ -1,4 +1,6 @@
 use clap::{arg, command, Parser};
+use config::{Config, File, FileFormat};
+use serde::Deserialize;
 
 mod investment;
 mod types;
@@ -8,23 +10,32 @@ use types::PositiveFloat;
 #[derive(Parser)]
 #[command(about = "Simulate index funds behaviour!")]
 struct Args {
-    #[arg(short, long, help = "Initial amount for the investing")]
-    amount: usize,
-    #[arg(short, long, help = "Annual percentage of interest")]
-    interest: f64,
-    #[arg(short, long, help = "Investment years")]
+    #[arg(short, long, help = "Configuration file")]
+    config_file: String,
+}
+
+#[derive(Deserialize)]
+struct Configuration {
+    deposit: usize,
+    interest_rates: Vec<f64>,
     years: usize,
-    #[arg(short, long, help = "Extra contribution per year")]
-    contribution: usize,
+    annual_contributions: Vec<PositiveFloat>,
 }
 
 fn main() {
     let args = Args::parse();
+    let config: Configuration = Config::builder()
+        .add_source(File::new(&args.config_file, FileFormat::Json))
+        .build()
+        .expect("Error loading configuration file")
+        .try_deserialize()
+        .expect("Error deserializing the configuration");
+
     let investment = Investment::new(
-        PositiveFloat::try_from(args.amount as f64).unwrap(),
-        args.years,
-        PositiveFloat::try_from(args.contribution as f64).unwrap(),
-        args.interest,
+        PositiveFloat::try_from(config.deposit as f64).unwrap(),
+        config.years,
+        config.annual_contributions,
+        config.interest_rates,
     );
     let investment_status = investment.simulate();
 

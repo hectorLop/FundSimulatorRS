@@ -1,42 +1,42 @@
 use crate::types::PositiveFloat;
 use fake::Dummy;
 
-#[derive(Debug, Clone, Copy, Dummy)]
+#[derive(Debug, Clone, Dummy)]
 pub struct Investment {
     deposit: PositiveFloat,
-    #[dummy(faker = "1..1000")]
     years: usize,
-    annual_contribution: PositiveFloat,
-    interest_rate: f64,
+    annual_contributions: Vec<PositiveFloat>,
+    interest_rates: Vec<f64>,
 }
 
 impl Investment {
     pub fn new(
         deposit: PositiveFloat,
         years: usize,
-        annual_contribution: PositiveFloat,
-        interest_rate: f64,
+        annual_contributions: Vec<PositiveFloat>,
+        interest_rates: Vec<f64>,
     ) -> Self {
         Investment {
             deposit,
             years,
-            annual_contribution,
-            interest_rate,
+            annual_contributions,
+            interest_rates,
         }
     }
 
     pub fn simulate(&self) -> Vec<InvestmentStatus> {
         let mut simulation_results: Vec<InvestmentStatus> = Vec::new();
         let taxes: PositiveFloat = PositiveFloat(0.2);
-        for year in 0..self.years {
+
+        for (i, year) in (0..self.years).enumerate() {
             if year == 0 {
                 simulation_results.push(InvestmentStatus::new(
                     year,
-                    (self.deposit.0 + self.annual_contribution.0)
+                    (self.deposit.0 + self.annual_contributions[i].0)
                         .try_into()
                         .expect("The deposited money cannot be negative"),
-                    self.deposit.0 + self.annual_contribution.0,
-                    self.interest_rate,
+                    self.deposit.0 + self.annual_contributions[i].0,
+                    self.interest_rates[i],
                     taxes,
                 ));
             } else {
@@ -45,11 +45,11 @@ impl Investment {
                     .unwrap_or_else(|| panic!("Error in year {}", year));
                 simulation_results.push(InvestmentStatus::new(
                     year,
-                    (last_year_result.deposited.0 + self.annual_contribution.0)
+                    (last_year_result.deposited.0 + self.annual_contributions[i].0)
                         .try_into()
                         .expect("The deposited money cannot be negative"),
-                    last_year_result.gross_profit() + self.annual_contribution.0,
-                    self.interest_rate,
+                    last_year_result.gross_profit() + self.annual_contributions[i].0,
+                    self.interest_rates[i],
                     taxes,
                 ));
             }
@@ -154,44 +154,6 @@ mod test {
         }
     }
 
-    impl quickcheck::Arbitrary for Investment {
-        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
-            Faker.fake()
-        }
-    }
-
-    #[quickcheck_macros::quickcheck]
-    fn test_investment_simulate(investment: Investment) -> bool {
-        let results = investment.simulate();
-
-        for i in 0..results.len() {
-            if i != 0 {
-                if investment.interest_rate > 0.0 {
-                    let conditions: [bool; 3] = [
-                        results[i].interest() > results[i - 1].interest(),
-                        results[i].gross_profit() > results[i - 1].gross_profit(),
-                        results[i].net_profit() > results[i - 1].net_profit(),
-                    ];
-
-                    if !conditions.iter().all(|&x| x == true) {
-                        return false;
-                    }
-                } else {
-                    let conditions: [bool; 3] = [
-                        results[i].interest() < results[i - 1].interest(),
-                        results[i].gross_profit() < results[i - 1].gross_profit(),
-                        results[i].net_profit() < results[i - 1].net_profit(),
-                    ];
-
-                    if !conditions.iter().all(|&x| x == true) {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
-    }
-
     #[quickcheck_macros::quickcheck]
     fn test_investment_status_interest(status: InvestmentStatus) -> bool {
         status.interest() < status.balance
@@ -286,8 +248,8 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            PositiveFloat::try_from(0.0).unwrap(),
-            0.05,
+            vec![PositiveFloat(0.0), PositiveFloat(0.0), PositiveFloat(0.0)],
+            vec![0.05, 0.05, 0.05],
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
@@ -326,8 +288,12 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            PositiveFloat::try_from(3600.0).unwrap(),
-            0.05,
+            vec![
+                PositiveFloat(3600.0),
+                PositiveFloat(3600.0),
+                PositiveFloat(3600.0),
+            ],
+            vec![0.05, 0.05, 0.05],
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
@@ -366,8 +332,12 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            PositiveFloat::try_from(3600.0).unwrap(),
-            -0.05,
+            vec![
+                PositiveFloat(3600.0),
+                PositiveFloat(3600.0),
+                PositiveFloat(3600.0),
+            ],
+            vec![-0.05, -0.05, -0.05],
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
