@@ -146,6 +146,7 @@ impl InvestmentStatus {
 #[cfg(test)]
 mod test {
     use super::{Investment, InvestmentStatus, PositiveFloat};
+    use crate::{AnnualContribution, Interest};
     use assert_float_eq::{afe_is_f64_near, afe_near_error_msg, assert_f64_near};
     use fake::{Fake, Faker};
 
@@ -249,8 +250,8 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            vec![PositiveFloat(0.0), PositiveFloat(0.0), PositiveFloat(0.0)],
-            vec![0.05, 0.05, 0.05],
+            AnnualContribution::Single(PositiveFloat(0.0)),
+            Interest::Single(0.05),
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
@@ -289,12 +290,8 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            vec![
-                PositiveFloat(3600.0),
-                PositiveFloat(3600.0),
-                PositiveFloat(3600.0),
-            ],
-            vec![0.05, 0.05, 0.05],
+            AnnualContribution::Single(PositiveFloat(3600.0)),
+            Interest::Single(0.05),
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
@@ -333,12 +330,8 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            vec![
-                PositiveFloat(3600.0),
-                PositiveFloat(3600.0),
-                PositiveFloat(3600.0),
-            ],
-            vec![-0.05, -0.05, -0.05],
+            AnnualContribution::Single(PositiveFloat(3600.0)),
+            Interest::Single(-0.05),
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
