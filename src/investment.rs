@@ -1,4 +1,5 @@
 use crate::types::PositiveFloat;
+use crate::{AnnualContribution, Interest};
 use fake::Dummy;
 
 #[derive(Debug, Clone, Dummy)]
@@ -13,14 +14,14 @@ impl Investment {
     pub fn new(
         deposit: PositiveFloat,
         years: usize,
-        annual_contributions: Vec<PositiveFloat>,
-        interest_rates: Vec<f64>,
+        contributions: AnnualContribution,
+        interest: Interest,
     ) -> Self {
         Investment {
             deposit,
             years,
-            annual_contributions,
-            interest_rates,
+            annual_contributions: contributions.to_annual_contributions(years),
+            interest_rates: interest.to_interest_rates(years),
         }
     }
 

@@ -17,9 +17,45 @@ struct Args {
 #[derive(Deserialize)]
 struct Configuration {
     deposit: usize,
-    interest_rates: Vec<f64>,
+    interest_rates: Interest,
     years: usize,
-    annual_contributions: Vec<PositiveFloat>,
+    annual_contributions: AnnualContribution,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum Interest {
+    Single(f64),
+    Multiple(Vec<f64>),
+}
+
+impl Interest {
+    fn to_interest_rates(&self, times: usize) -> Vec<f64> {
+        match self {
+            Interest::Single(fixed_interest) => {
+                (0..times).map(|_| *fixed_interest).collect::<Vec<f64>>()
+            }
+            Interest::Multiple(multiple) => multiple.to_vec(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum AnnualContribution {
+    Single(PositiveFloat),
+    Multiple(Vec<PositiveFloat>),
+}
+
+impl AnnualContribution {
+    fn to_annual_contributions(&self, times: usize) -> Vec<PositiveFloat> {
+        match self {
+            AnnualContribution::Single(fixed_contribution) => {
+                (0..times).map(|_| *fixed_contribution).collect()
+            }
+            AnnualContribution::Multiple(multiple) => multiple.to_vec(),
+        }
+    }
 }
 
 fn main() {
