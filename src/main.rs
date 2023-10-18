@@ -2,8 +2,10 @@ use clap::{arg, command, Parser};
 use config::{Config, File, FileFormat};
 use serde::Deserialize;
 
+mod distributions;
 mod investment;
 mod types;
+
 use investment::Investment;
 use types::PositiveFloat;
 
