@@ -18,7 +18,7 @@ pub fn get_distributions() -> HashMap<&'static str, Vec<f64>> {
         let rate: f64 = record[1]
             .parse()
             .expect("Failure parsing a return interest into a f64");
-        sp500_dist.push(rate);
+        sp500_dist.push(rate / 100.0);
     }
 
     if let Some(old_value) = distributions.insert("sp500", sp500_dist) {
@@ -29,7 +29,7 @@ pub fn get_distributions() -> HashMap<&'static str, Vec<f64>> {
         let rate: f64 = record[1]
             .parse()
             .expect("Failure parsing a return interest into a f64");
-        msci_world_dist.push(rate);
+        msci_world_dist.push(rate / 100.0);
     }
 
     if let Some(old_value) = distributions.insert("msci_world", msci_world_dist) {
