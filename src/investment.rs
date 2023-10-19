@@ -1,5 +1,4 @@
 use crate::types::PositiveFloat;
-use crate::{AnnualContribution, Interest};
 use fake::Dummy;
 
 #[derive(Debug, Clone, Dummy)]
@@ -14,14 +13,14 @@ impl Investment {
     pub fn new(
         deposit: PositiveFloat,
         years: usize,
-        contributions: AnnualContribution,
-        interest: Interest,
+        contributions: Vec<PositiveFloat>,
+        interest: Vec<f64>,
     ) -> Self {
         Investment {
             deposit,
             years,
-            annual_contributions: contributions.to_annual_contributions(years),
-            interest_rates: interest.to_interest_rates(years),
+            annual_contributions: contributions,
+            interest_rates: interest,
         }
     }
 
@@ -250,8 +249,8 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            AnnualContribution::Single(PositiveFloat(0.0)),
-            Interest::Single(0.05),
+            AnnualContribution::Single(PositiveFloat(0.0)).to_annual_contributions(3),
+            Interest::Single(0.05).to_interest_rates(3),
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
@@ -290,8 +289,8 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            AnnualContribution::Single(PositiveFloat(3600.0)),
-            Interest::Single(0.05),
+            AnnualContribution::Single(PositiveFloat(3600.0)).to_annual_contributions(3),
+            Interest::Single(0.05).to_interest_rates(3),
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [
@@ -330,8 +329,8 @@ mod test {
         let investment = Investment::new(
             PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            AnnualContribution::Single(PositiveFloat(3600.0)),
-            Interest::Single(-0.05),
+            AnnualContribution::Single(PositiveFloat(3600.0)).to_annual_contributions(3),
+            Interest::Single(-0.05).to_interest_rates(3),
         );
         let investment_results = investment.simulate();
         let expected: [InvestmentStatus; 3] = [

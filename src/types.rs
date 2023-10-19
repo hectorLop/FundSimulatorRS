@@ -1,4 +1,6 @@
+use crate::distributions::get_distributions;
 use fake::{Dummy, Faker};
+use rand::prelude::SliceRandom;
 use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
@@ -28,9 +30,58 @@ impl Dummy<Faker> for PositiveFloat {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum Interest {
+    Single(f64),
+    Multiple(Vec<f64>),
+    Distribution(String),
+}
+
+impl Interest {
+    pub fn to_interest_rates(&self, times: usize) -> Vec<f64> {
+        match self {
+            Interest::Single(fixed_interest) => {
+                (0..times).map(|_| *fixed_interest).collect::<Vec<f64>>()
+            }
+            Interest::Multiple(multiple) => multiple.to_vec(),
+            Interest::Distribution(dist_name) => {
+                let distributions = get_distributions();
+                let selected_distribution = distributions
+                    .get(dist_name.as_str())
+                    .expect("The selected distribution doesn't exist");
+
+                let mut rng = rand::thread_rng();
+                selected_distribution
+                    .choose_multiple(&mut rng, times)
+                    .copied()
+                    .collect()
+            }
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum AnnualContribution {
+    Single(PositiveFloat),
+    Multiple(Vec<PositiveFloat>),
+}
+
+impl AnnualContribution {
+    pub fn to_annual_contributions(&self, times: usize) -> Vec<PositiveFloat> {
+        match self {
+            AnnualContribution::Single(fixed_contribution) => {
+                (0..times).map(|_| *fixed_contribution).collect()
+            }
+            AnnualContribution::Multiple(multiple) => multiple.to_vec(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::PositiveFloat;
+    use super::{AnnualContribution, Interest, PositiveFloat};
     use claim::assert_ok_eq;
     use rand::Rng;
 
@@ -65,5 +116,29 @@ mod test {
     fn test_positive_float_error(invalid_number: InvalidNumberFixture) -> bool {
         let invalid_float = PositiveFloat::try_from(invalid_number.0);
         invalid_float.is_err()
+    }
+
+    #[test]
+    fn test_single_interest_to_interest_rates() {
+        let interest_rates = Interest::Single(0.5).to_interest_rates(4);
+        assert_eq!(interest_rates.len(), 4);
+        assert!(!interest_rates.is_empty());
+
+        let interest_rates = Interest::Single(0.5).to_interest_rates(0);
+        assert_eq!(interest_rates.len(), 0);
+        assert!(interest_rates.is_empty())
+    }
+
+    #[test]
+    fn test_multiple_interest_to_interest_rates() {
+        let interest_rates = Interest::Multiple(vec![0.5, 0.0, 0.2]);
+        assert_eq!(interest_rates.to_interest_rates(1), vec![0.5, 0.0, 0.2])
+    }
+
+    #[test]
+    fn test_distribution_to_interest_rates() {
+        let interest = Interest::Distribution("sp500".to_string());
+        assert_eq!(interest.to_interest_rates(3).len(), 3);
+        // TODO: Test distribution doesn't exist
     }
 }

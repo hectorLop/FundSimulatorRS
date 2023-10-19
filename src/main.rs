@@ -7,7 +7,7 @@ mod investment;
 mod types;
 
 use investment::Investment;
-use types::PositiveFloat;
+use types::{AnnualContribution, Interest, PositiveFloat};
 
 #[derive(Parser)]
 #[command(about = "Simulate index funds behaviour!")]
@@ -24,42 +24,6 @@ struct Configuration {
     annual_contributions: AnnualContribution,
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
-pub enum Interest {
-    Single(f64),
-    Multiple(Vec<f64>),
-}
-
-impl Interest {
-    fn to_interest_rates(&self, times: usize) -> Vec<f64> {
-        match self {
-            Interest::Single(fixed_interest) => {
-                (0..times).map(|_| *fixed_interest).collect::<Vec<f64>>()
-            }
-            Interest::Multiple(multiple) => multiple.to_vec(),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-pub enum AnnualContribution {
-    Single(PositiveFloat),
-    Multiple(Vec<PositiveFloat>),
-}
-
-impl AnnualContribution {
-    fn to_annual_contributions(&self, times: usize) -> Vec<PositiveFloat> {
-        match self {
-            AnnualContribution::Single(fixed_contribution) => {
-                (0..times).map(|_| *fixed_contribution).collect()
-            }
-            AnnualContribution::Multiple(multiple) => multiple.to_vec(),
-        }
-    }
-}
-
 fn main() {
     let args = Args::parse();
     let config: Configuration = Config::builder()
@@ -72,8 +36,10 @@ fn main() {
     let investment = Investment::new(
         PositiveFloat::try_from(config.deposit as f64).unwrap(),
         config.years,
-        config.annual_contributions,
-        config.interest_rates,
+        config
+            .annual_contributions
+            .to_annual_contributions(config.years),
+        config.interest_rates.to_interest_rates(config.years),
     );
     let investment_status = investment.simulate();
 
