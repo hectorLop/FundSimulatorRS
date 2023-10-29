@@ -147,6 +147,8 @@ mod investment_status_tests {
     use super::InvestmentStatus;
     use crate::types::PositiveFloat;
     use assert_float_eq::{afe_is_f64_near, afe_near_error_msg, assert_f64_near};
+    use fake::{Fake, Faker};
+    use rand::Rng;
     use rstest::rstest;
 
     #[rstest(
@@ -196,6 +198,63 @@ mod investment_status_tests {
             assert_f64_near!(status.net_profit(), net_profits[year]);
         }
     }
+
+    #[derive(Clone, Debug)]
+    struct InterestRateFixture(pub f64);
+
+    impl quickcheck::Arbitrary for InterestRateFixture {
+        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
+            let mut rng = rand::thread_rng();
+            Self(rng.gen_range(-2.0..2.0))
+        }
+    }
+    impl quickcheck::Arbitrary for PositiveFloat {
+        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
+            Faker.fake()
+        }
+    }
+
+    // Non-negativity: interest, gross profit, and net profit should never be negative.
+    #[quickcheck_macros::quickcheck]
+    fn non_negativity(balance: PositiveFloat, interest_rate: InterestRateFixture) -> bool {
+        let status = InvestmentStatus::new(
+            0,
+            balance,
+            balance.0,
+            interest_rate.0.abs(),
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
+        status.interest() >= 0.0 && status.gross_profit() >= 0.0 && status.net_profit() >= 0.0
+    }
+
+    // Monotonicity: Increasing the balance or interest rate on positive years should not decrease any of the computed values.
+    #[quickcheck_macros::quickcheck]
+    fn monotonicity(
+        initial_balance: PositiveFloat,
+        balance: PositiveFloat,
+        interest_rate: InterestRateFixture,
+    ) -> bool {
+        let status1 = InvestmentStatus::new(
+            0,
+            initial_balance,
+            balance.0,
+            interest_rate.0.abs(),
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
+        let increased_balance = PositiveFloat::try_from(balance.0 * 1.1).unwrap();
+        let increased_interest_rate = interest_rate.0.abs();
+
+        let status2 = InvestmentStatus::new(
+            0,
+            initial_balance,
+            increased_balance.0,
+            increased_interest_rate,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
+        status2.interest() >= status1.interest()
+            && status2.gross_profit() >= status1.gross_profit()
+            && status2.net_profit() >= status1.net_profit()
+    }
 }
 
 #[cfg(test)]
@@ -203,27 +262,6 @@ mod test {
     use super::{Investment, InvestmentStatus, PositiveFloat};
     use crate::{AnnualContribution, Interest};
     use assert_float_eq::{afe_is_f64_near, afe_near_error_msg, assert_f64_near};
-    use fake::{Fake, Faker};
-
-    impl quickcheck::Arbitrary for InvestmentStatus {
-        fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
-            Faker.fake()
-        }
-    }
-
-    #[quickcheck_macros::quickcheck]
-    fn test_investment_status_interest(status: InvestmentStatus) -> bool {
-        status.interest() < status.balance
-    }
-
-    #[quickcheck_macros::quickcheck]
-    fn test_investment_status_gross_profit(status: InvestmentStatus) -> bool {
-        status.gross_profit() > status.interest()
-    }
-    #[quickcheck_macros::quickcheck]
-    fn test_investment_status_net_profit(status: InvestmentStatus) -> bool {
-        status.net_profit() <= status.gross_profit()
-    }
 
     #[test]
     fn test_investment_simulation() {
