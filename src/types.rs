@@ -81,7 +81,7 @@ impl AnnualContribution {
 
 #[cfg(test)]
 mod test {
-    use super::{AnnualContribution, Interest, PositiveFloat};
+    use super::{Interest, PositiveFloat};
     use claim::assert_ok_eq;
     use rand::Rng;
 

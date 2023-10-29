@@ -143,6 +143,62 @@ impl InvestmentStatus {
 }
 
 #[cfg(test)]
+mod investment_status_tests {
+    use super::InvestmentStatus;
+    use crate::types::PositiveFloat;
+    use assert_float_eq::{afe_is_f64_near, afe_near_error_msg, assert_f64_near};
+    use rstest::rstest;
+
+    #[rstest(
+    initial_balance, interest_rate, expected_interest, expected_gross_profit, expected_net_profit,
+    case::positive_profit(10000.0, 0.05, 500.0, 10500.0, 10400.0),
+    case::negative_profit(10000.0, -0.05, -500.0, 9500.0, 9500.0),
+    case::zero_initial_balance(0.0, 0.05, 0.0, 0.0, 0.0),
+    case::zero_interest_rate(1000.0, 0.0, 0.0, 1000.0, 1000.0),
+    )]
+    fn test_profit_computation(
+        initial_balance: f64,
+        interest_rate: f64,
+        expected_interest: f64,
+        expected_gross_profit: f64,
+        expected_net_profit: f64,
+    ) {
+        let status = InvestmentStatus::new(
+            1,
+            PositiveFloat::try_from(initial_balance).unwrap(),
+            initial_balance,
+            interest_rate,
+            PositiveFloat::try_from(0.2).unwrap(),
+        );
+        assert_f64_near!(status.interest(), expected_interest);
+        assert_f64_near!(status.gross_profit(), expected_gross_profit);
+        assert_f64_near!(status.net_profit(), expected_net_profit);
+    }
+
+    #[test]
+    fn test_multi_year_profit_computation() {
+        let balances: [f64; 4] = [10000.0, 10500.0, 11025.0, 11135.25];
+        let interest_rates: [f64; 4] = [0.05, 0.05, 0.01, -0.05];
+        let interests: [f64; 4] = [500.0, 525.0, 110.25, -556.7625];
+        let gross_profits: [f64; 4] = [10500.0, 11025.0, 11135.25, 10578.4875];
+        let net_profits: [f64; 4] = [10400.0, 10820.0, 10908.2, 10462.79];
+
+        for year in 0..4 {
+            let status = InvestmentStatus::new(
+                year,
+                PositiveFloat::try_from(10000.0).unwrap(),
+                balances[year],
+                interest_rates[year],
+                PositiveFloat::try_from(0.2).unwrap(),
+            );
+            assert_f64_near!(status.interest(), interests[year]);
+            assert_f64_near!(status.gross_profit(), gross_profits[year]);
+            assert_f64_near!(status.net_profit(), net_profits[year]);
+        }
+    }
+}
+
+#[cfg(test)]
 mod test {
     use super::{Investment, InvestmentStatus, PositiveFloat};
     use crate::{AnnualContribution, Interest};
@@ -167,81 +223,6 @@ mod test {
     #[quickcheck_macros::quickcheck]
     fn test_investment_status_net_profit(status: InvestmentStatus) -> bool {
         status.net_profit() <= status.gross_profit()
-    }
-
-    #[test]
-    fn test_positive_profit_computation() {
-        let status = InvestmentStatus::new(
-            1,
-            PositiveFloat::try_from(10000.0).unwrap(),
-            10000.0,
-            0.05,
-            PositiveFloat::try_from(0.2).unwrap(),
-        );
-        assert_f64_near!(status.interest(), 500.0);
-        assert_f64_near!(status.gross_profit(), 10500.0);
-        assert_f64_near!(status.net_profit(), 10400.0);
-    }
-
-    #[test]
-    fn test_negative_profit_computation() {
-        let status = InvestmentStatus::new(
-            1,
-            PositiveFloat::try_from(10000.0).unwrap(),
-            10000.0,
-            -0.05,
-            PositiveFloat::try_from(0.2).unwrap(),
-        );
-        assert_f64_near!(status.interest(), -500.0);
-        assert_f64_near!(status.gross_profit(), 9500.0);
-        assert_f64_near!(status.net_profit(), 9500.0);
-    }
-
-    #[test]
-    fn test_profit_computation() {
-        let status = InvestmentStatus::new(
-            0,
-            PositiveFloat::try_from(10000.0).unwrap(),
-            10000.0,
-            0.05,
-            PositiveFloat::try_from(0.2).unwrap(),
-        );
-        assert_f64_near!(status.interest(), 500.0);
-        assert_f64_near!(status.gross_profit(), 10500.0);
-        assert_f64_near!(status.net_profit(), 10400.0);
-
-        let status_second_year = InvestmentStatus::new(
-            1,
-            PositiveFloat::try_from(10000.0).unwrap(),
-            10500.0,
-            0.05,
-            PositiveFloat::try_from(0.2).unwrap(),
-        );
-        assert_f64_near!(status_second_year.interest(), 525.0);
-        assert_f64_near!(status_second_year.gross_profit(), 11025.0);
-        assert_f64_near!(status_second_year.net_profit(), 10820.0);
-
-        let status_third_year = InvestmentStatus::new(
-            2,
-            PositiveFloat::try_from(10000.0).unwrap(),
-            11025.0,
-            0.01,
-            PositiveFloat::try_from(0.2).unwrap(),
-        );
-        assert_f64_near!(status_third_year.interest(), 110.25);
-        assert_f64_near!(status_third_year.gross_profit(), 11135.25);
-        assert_f64_near!(status_third_year.net_profit(), 10908.2);
-
-        let status_fourth_year = InvestmentStatus::new(
-            3,
-            PositiveFloat::try_from(10000.0).unwrap(),
-            11135.25,
-            -0.05,
-            PositiveFloat::try_from(0.2).unwrap(),
-        );
-        assert_f64_near!(status_fourth_year.interest(), -556.7625);
-        assert_f64_near!(status_fourth_year.gross_profit(), 10578.4875);
-        assert_f64_near!(status_fourth_year.net_profit(), 10462.79);
     }
 
     #[test]
