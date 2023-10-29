@@ -139,6 +139,12 @@ mod test {
     fn test_distribution_to_interest_rates() {
         let interest = Interest::Distribution("sp500".to_string());
         assert_eq!(interest.to_interest_rates(3).len(), 3);
-        // TODO: Test distribution doesn't exist
+    }
+
+    #[test]
+    #[should_panic(expected = "The selected distribution doesn't exist")]
+    fn test_distribution_does_not_exist() {
+        let interest = Interest::Distribution("non-existing-dist".to_string());
+        interest.to_interest_rates(3);
     }
 }
