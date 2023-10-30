@@ -1,6 +1,6 @@
 use crate::distributions::get_distributions;
 use fake::{Dummy, Faker};
-use rand::prelude::SliceRandom;
+use rand::Rng;
 use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
@@ -39,23 +39,26 @@ pub enum Interest {
 }
 
 impl Interest {
-    pub fn to_interest_rates(&self, times: usize) -> Vec<f64> {
+    pub fn to_interest_rates(&self, years: usize) -> Vec<f64> {
         match self {
             Interest::Single(fixed_interest) => {
-                (0..times).map(|_| *fixed_interest).collect::<Vec<f64>>()
+                (0..years).map(|_| *fixed_interest).collect::<Vec<f64>>()
             }
             Interest::Multiple(multiple) => multiple.to_vec(),
             Interest::Distribution(dist_name) => {
-                let distributions = get_distributions();
-                let selected_distribution = distributions
+                let distribution = get_distributions()
                     .get(dist_name.as_str())
-                    .expect("The selected distribution doesn't exist");
+                    .expect("The selected distribution doesn't exist")
+                    .to_vec();
 
                 let mut rng = rand::thread_rng();
-                selected_distribution
-                    .choose_multiple(&mut rng, times)
-                    .copied()
-                    .collect()
+                let mut distribution_simulation: Vec<f64> = Vec::with_capacity(years);
+
+                for _ in 0..years {
+                    let random_index = rng.gen_range(0..distribution.len());
+                    distribution_simulation.push(distribution[random_index]);
+                }
+                distribution_simulation
             }
         }
     }
