@@ -41,12 +41,12 @@ fn main() {
             .to_annual_contributions(config.years),
         config.interest_rates.to_interest_rates(config.years),
     );
-    let investment_status = investment.simulate();
+    let investment_snapshots = investment.simulate();
 
-    for status in investment_status.iter() {
-        println!("{}", status.results());
+    for status in investment_snapshots.iter() {
+        println!("{}", status.result().report());
     }
 
-    let results = investment.results(investment_status);
+    let results = investment.results(investment_snapshots);
     println!("{}", results);
 }
