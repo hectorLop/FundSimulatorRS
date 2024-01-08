@@ -1,5 +1,7 @@
+use crate::error;
 use crate::types::PositiveFloat;
 use fake::Dummy;
+use serde;
 
 #[derive(Debug, Clone, Dummy)]
 pub struct Investment {
@@ -24,7 +26,7 @@ impl Investment {
         }
     }
 
-    pub fn simulate(&self) -> Vec<InvestmentSnapshot> {
+    pub fn simulate(&self) -> Result<Vec<InvestmentSnapshot>, error::SimulationError> {
         let mut simulation_results: Vec<InvestmentSnapshot> = Vec::new();
 
         for (i, year) in (0..self.investment_years).enumerate() {
@@ -36,8 +38,7 @@ impl Investment {
                         + self.annual_net_contributions[i].0
                 }
             }
-            .try_into()
-            .expect("Net contribution canot be negative");
+            .try_into()?;
             let initial_balance = {
                 if year == 0 {
                     self.initial_deposit.0 + self.annual_net_contributions[i].0
@@ -51,31 +52,43 @@ impl Investment {
                 net_contribution,
                 initial_balance,
                 self.return_rates[i],
-            )
-            .expect("NaN value found");
+            )?;
             simulation_results.push(investment_snapshot);
         }
 
-        simulation_results
+        Ok(simulation_results)
     }
+}
 
-    pub fn results(&self, investment_status: Vec<InvestmentSnapshot>) -> String {
-        let last_year_result = investment_status
-            .last()
-            .expect("Error getting the last year status for the total results");
-        format!(
-            "
-        -------------------------------------------------------------
-        After {} years, these are the total results of the Investment:
-        --------------------------------------------------------------
-        Net contributions: {}
-        Final balance: {} 
-        ",
-            self.investment_years,
-            last_year_result.net_contribution.0,
-            last_year_result.final_balance()
-        )
-    }
+#[derive(serde::Serialize, Debug)]
+pub struct InvestmentResult {
+    investment_years: usize,
+    net_contributions: PositiveFloat,
+    final_balance: f64,
+    average_return_rate: f64,
+}
+
+pub fn get_investment_result(
+    investment_information: Vec<InvestmentSnapshotResult>,
+) -> Result<InvestmentResult, error::SimulationError> {
+    let last_year_result = match investment_information.last() {
+        Some(result) => result,
+        None => return Err(error::SimulationError::InvalidInvestmentResults),
+    };
+
+    let sum: f64 = investment_information
+        .iter()
+        .map(|snapshot| snapshot.return_rate)
+        .sum();
+    let average_return_rate = sum / investment_information.len() as f64;
+    let investment_result = InvestmentResult {
+        investment_years: investment_information.len(),
+        net_contributions: last_year_result.net_contribution,
+        final_balance: last_year_result.final_balance,
+        average_return_rate,
+    };
+
+    Ok(investment_result)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -93,9 +106,9 @@ impl InvestmentSnapshot {
         net_contribution: PositiveFloat,
         initial_balance: f64,
         return_rate: f64,
-    ) -> Result<Self, &'static str> {
+    ) -> Result<Self, error::TypeError> {
         if initial_balance.is_nan() || return_rate.is_nan() {
-            return Err("NaN value provided");
+            return Err(error::TypeError::NaNInvalid);
         }
         Ok(InvestmentSnapshot {
             year,
@@ -120,33 +133,13 @@ impl InvestmentSnapshot {
     }
 }
 
+#[derive(serde::Serialize)]
 pub struct InvestmentSnapshotResult {
     year: usize,
     net_contribution: PositiveFloat,
     initial_balance: f64,
     return_rate: f64,
     final_balance: f64,
-}
-
-impl InvestmentSnapshotResult {
-    pub fn report(&self) -> String {
-        format!(
-            "
-        -----------------
-        | YEAR {}
-        -----------------
-        Net contribution: {}
-        Initial balance: {}
-        Return rate: {}
-        Final balance: {}
-        ",
-            self.year,
-            self.net_contribution.0,
-            self.initial_balance,
-            self.return_rate,
-            self.final_balance
-        )
-    }
 }
 
 #[cfg(test)]
@@ -236,7 +229,7 @@ mod test_investment {
             AnnualContribution::Single(PositiveFloat(0.0)).to_annual_contributions(3),
             Interest::Single(0.05).to_interest_rates(3),
         );
-        let investment_results = investment.simulate();
+        let investment_results = investment.simulate().unwrap();
         let expected: [f64; 3] = [10500.0, 11025.0, 11576.25];
 
         for (i, result) in investment_results.iter().enumerate() {
@@ -252,7 +245,7 @@ mod test_investment {
             AnnualContribution::Single(PositiveFloat(3600.0)).to_annual_contributions(3),
             vec![0.05, 0.05, 0.05],
         );
-        let investment_results = investment.simulate();
+        let investment_results = investment.simulate().unwrap();
         let expected: [f64; 3] = [14280.0, 18774.0, 23492.7];
 
         for (i, result) in investment_results.iter().enumerate() {
@@ -268,7 +261,7 @@ mod test_investment {
             AnnualContribution::Single(PositiveFloat(3600.0)).to_annual_contributions(3),
             vec![0.05, -0.05, -0.05],
         );
-        let investment_results = investment.simulate();
+        let investment_results = investment.simulate().unwrap();
         let expected: [f64; 3] = [14280.0, 16986.0, 19556.7];
 
         for (i, result) in investment_results.iter().enumerate() {

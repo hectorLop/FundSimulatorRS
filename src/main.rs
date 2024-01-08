@@ -1,12 +1,12 @@
 use clap::{arg, command, Parser};
 use config::{Config, File, FileFormat};
-use serde::Deserialize;
 
 mod distributions;
+mod error;
 mod investment;
 mod types;
 
-use investment::Investment;
+use investment::{Investment, InvestmentSnapshotResult};
 use types::{AnnualContribution, Interest, PositiveFloat};
 
 #[derive(Parser)]
@@ -16,7 +16,7 @@ struct Args {
     config_file: String,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct Configuration {
     deposit: usize,
     interest_rates: Interest,
@@ -41,12 +41,21 @@ fn main() {
             .to_annual_contributions(config.years),
         config.interest_rates.to_interest_rates(config.years),
     );
-    let investment_snapshots = investment.simulate();
-
-    for status in investment_snapshots.iter() {
-        println!("{}", status.result().report());
+    let investment_snapshots = investment.simulate().unwrap();
+    let investment_results: Vec<InvestmentSnapshotResult> = investment_snapshots
+        .iter()
+        .map(|snapshot| snapshot.result())
+        .collect();
+    for (year, result) in investment_results.iter().enumerate() {
+        println!(
+            "Investment result year {}\n {}",
+            year + 1,
+            serde_json::to_string(result).unwrap()
+        );
     }
-
-    let results = investment.results(investment_snapshots);
-    println!("{}", results);
+    let investment_result = investment::get_investment_result(investment_results).unwrap();
+    println!(
+        "Investment result\n {}",
+        serde_json::to_string(&investment_result).unwrap()
+    );
 }

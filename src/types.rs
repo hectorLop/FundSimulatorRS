@@ -1,23 +1,17 @@
-use crate::distributions::get_distributions;
+use crate::distributions;
+use crate::error;
 use fake::{Dummy, Faker};
 use rand::Rng;
-use serde::Deserialize;
 
-#[derive(Copy, Clone, Debug, PartialEq, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PositiveFloat(pub f64);
 
-#[derive(Debug, PartialEq)]
-pub struct PositiveFloatError(String);
-
 impl TryFrom<f64> for PositiveFloat {
-    type Error = PositiveFloatError;
+    type Error = error::TypeError;
 
-    fn try_from(value: f64) -> Result<Self, PositiveFloatError> {
+    fn try_from(value: f64) -> Result<Self, error::TypeError> {
         if value < 0.0 {
-            return Err(PositiveFloatError(format!(
-                "{:.2} is a negative float.",
-                value
-            )));
+            return Err(error::TypeError::PositiveFloatError(value));
         }
 
         Ok(Self(value))
@@ -30,7 +24,7 @@ impl Dummy<Faker> for PositiveFloat {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[serde(untagged)]
 pub enum Interest {
     Single(f64),
@@ -46,7 +40,7 @@ impl Interest {
             }
             Interest::Multiple(multiple) => multiple.to_vec(),
             Interest::Distribution(dist_name) => {
-                let distribution = get_distributions()
+                let distribution = distributions::get_distributions()
                     .get(dist_name.as_str())
                     .expect("The selected distribution doesn't exist")
                     .to_vec();
@@ -64,7 +58,7 @@ impl Interest {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[serde(untagged)]
 pub enum AnnualContribution {
     Single(PositiveFloat),
