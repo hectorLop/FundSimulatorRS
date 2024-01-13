@@ -1,7 +1,6 @@
 use crate::error;
 use crate::types::PositiveFloat;
 use fake::Dummy;
-use serde;
 
 #[derive(Debug, Clone, Dummy)]
 pub struct Investment {
@@ -145,7 +144,7 @@ pub struct InvestmentSnapshotResult {
 #[cfg(test)]
 mod investment_status_tests {
     use super::InvestmentSnapshot;
-    use crate::types::PositiveFloat;
+    use crate::types;
     use fake::{Fake, Faker};
     use rand::Rng;
 
@@ -158,7 +157,7 @@ mod investment_status_tests {
             Self(rng.gen_range(-2.0..2.0))
         }
     }
-    impl quickcheck::Arbitrary for PositiveFloat {
+    impl quickcheck::Arbitrary for types::PositiveFloat {
         fn arbitrary(_g: &mut quickcheck::Gen) -> Self {
             Faker.fake()
         }
@@ -175,7 +174,10 @@ mod investment_status_tests {
     }
 
     #[quickcheck_macros::quickcheck]
-    fn final_balance_properties(balance: PositiveFloat, return_rate: ReturnRateFixture) -> bool {
+    fn final_balance_properties(
+        balance: types::PositiveFloat,
+        return_rate: ReturnRateFixture,
+    ) -> bool {
         let status = InvestmentSnapshot::new(0, balance, balance.0, return_rate.0).unwrap();
         let result = status.result();
 
@@ -191,7 +193,7 @@ mod investment_status_tests {
     #[quickcheck_macros::quickcheck]
     fn investment_snapshot_result_consistency(
         year: usize,
-        net_contribution: PositiveFloat,
+        net_contribution: types::PositiveFloat,
         initial_balance: FloatFixture,
         return_rate: FloatFixture,
     ) -> bool {
@@ -208,26 +210,28 @@ mod investment_status_tests {
 
     #[test]
     fn test_investment_snapshot_with_nan() {
-        let status = InvestmentSnapshot::new(2022, PositiveFloat(1000.0), std::f64::NAN, 0.12);
+        let status =
+            InvestmentSnapshot::new(2022, types::PositiveFloat(1000.0), std::f64::NAN, 0.12);
         assert!(status.is_err());
-        let status = InvestmentSnapshot::new(2022, PositiveFloat(1000.0), 10000.0, std::f64::NAN);
+        let status =
+            InvestmentSnapshot::new(2022, types::PositiveFloat(1000.0), 10000.0, std::f64::NAN);
         assert!(status.is_err());
     }
 }
 
 #[cfg(test)]
 mod test_investment {
-    use super::{Investment, PositiveFloat};
-    use crate::{AnnualContribution, Interest};
+    use super::Investment;
+    use crate::types;
     use assert_float_eq::{afe_is_f64_near, afe_near_error_msg, assert_f64_near};
 
     #[test]
     fn test_investment_simulation() {
         let investment = Investment::new(
-            PositiveFloat::try_from(10000.0).unwrap(),
+            types::PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            AnnualContribution::Single(PositiveFloat(0.0)).to_annual_contributions(3),
-            Interest::Single(0.05).to_interest_rates(3),
+            types::AnnualContribution::Single(types::PositiveFloat(0.0)).to_annual_contributions(3),
+            types::Interest::Single(0.05).to_interest_rates(3),
         );
         let investment_results = investment.simulate().unwrap();
         let expected: [f64; 3] = [10500.0, 11025.0, 11576.25];
@@ -240,9 +244,10 @@ mod test_investment {
     #[test]
     fn test_investment_simulation_with_annual_contribution() {
         let investment = Investment::new(
-            PositiveFloat::try_from(10000.0).unwrap(),
+            types::PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            AnnualContribution::Single(PositiveFloat(3600.0)).to_annual_contributions(3),
+            types::AnnualContribution::Single(types::PositiveFloat(3600.0))
+                .to_annual_contributions(3),
             vec![0.05, 0.05, 0.05],
         );
         let investment_results = investment.simulate().unwrap();
@@ -256,9 +261,10 @@ mod test_investment {
     #[test]
     fn test_investment_simulation_with_annual_contribution_and_negative_rates() {
         let investment = Investment::new(
-            PositiveFloat::try_from(10000.0).unwrap(),
+            types::PositiveFloat::try_from(10000.0).unwrap(),
             3,
-            AnnualContribution::Single(PositiveFloat(3600.0)).to_annual_contributions(3),
+            types::AnnualContribution::Single(types::PositiveFloat(3600.0))
+                .to_annual_contributions(3),
             vec![0.05, -0.05, -0.05],
         );
         let investment_results = investment.simulate().unwrap();

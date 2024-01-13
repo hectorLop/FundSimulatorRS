@@ -1,61 +1,40 @@
-use clap::{arg, command, Parser};
-use config::{Config, File, FileFormat};
+use clap::{arg, command, Parser, ValueEnum};
 
+mod cli;
 mod distributions;
 mod error;
 mod investment;
+mod investment_config;
+mod server;
 mod types;
 
-use investment::{Investment, InvestmentSnapshotResult};
-use types::{AnnualContribution, Interest, PositiveFloat};
+#[derive(Clone, ValueEnum, Debug, PartialEq)]
+enum AppMode {
+    Server,
+    Cli,
+}
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(about = "Simulate index funds behaviour!")]
 struct Args {
-    #[arg(short, long, help = "Configuration file")]
-    config_file: String,
+    #[arg(short, long, help = "Application mode")]
+    mode: AppMode,
+    #[arg(short, long, help = "Configuration file", required = false)]
+    config_file: Option<String>,
 }
 
-#[derive(serde::Deserialize)]
-struct Configuration {
-    deposit: usize,
-    interest_rates: Interest,
-    years: usize,
-    annual_contributions: AnnualContribution,
-}
-
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
-    let config: Configuration = Config::builder()
-        .add_source(File::new(&args.config_file, FileFormat::Json))
-        .build()
-        .expect("Error loading configuration file")
-        .try_deserialize()
-        .expect("Error deserializing the configuration");
-
-    let investment = Investment::new(
-        PositiveFloat::try_from(config.deposit as f64).unwrap(),
-        config.years,
-        config
-            .annual_contributions
-            .to_annual_contributions(config.years),
-        config.interest_rates.to_interest_rates(config.years),
-    );
-    let investment_snapshots = investment.simulate().unwrap();
-    let investment_results: Vec<InvestmentSnapshotResult> = investment_snapshots
-        .iter()
-        .map(|snapshot| snapshot.result())
-        .collect();
-    for (year, result) in investment_results.iter().enumerate() {
-        println!(
-            "Investment result year {}\n {}",
-            year + 1,
-            serde_json::to_string(result).unwrap()
-        );
+    if args.mode == AppMode::Cli && args.config_file.is_none() {
+        eprintln!("Error: `config_file` is required when `mode` is set to `Cli`");
     }
-    let investment_result = investment::get_investment_result(investment_results).unwrap();
-    println!(
-        "Investment result\n {}",
-        serde_json::to_string(&investment_result).unwrap()
-    );
+
+    match args.mode {
+        AppMode::Cli => cli::run_cli_simulation(args.config_file.unwrap()),
+        AppMode::Server => {
+            let server = server::Server::new("0.0.0.0".to_string(), "3000".to_string());
+            server.serve().await;
+        }
+    }
 }
