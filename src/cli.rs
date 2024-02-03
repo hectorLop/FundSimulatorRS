@@ -16,7 +16,7 @@ pub fn run_cli_simulation(config_file: String) {
         config
             .annual_contributions
             .to_annual_contributions(config.years),
-        config.interest_rates.to_interest_rates(config.years),
+        config.return_rates.to_interest_rates(config.years),
     );
 
     let investment_snapshots = investment.simulate().unwrap();
