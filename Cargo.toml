@@ -18,6 +18,7 @@ rstest = "0.18.2"
 thiserror = "1.0.56"
 axum = "0.7.3"
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
+sqlx = { version = "0.7.3", features = ["tls-rustls", "runtime-tokio", "postgres"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
