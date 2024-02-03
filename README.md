@@ -15,7 +15,7 @@ cargo run -- --mode cli --config-file example.json
 ```
 
 ### Server mode
-Run the following command or `docker compose run` to start the server.
+Run the following command or `docker compose up` to start the server.
 ```
 cargo run -- --mode server
 ```
