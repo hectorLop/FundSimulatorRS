@@ -6,6 +6,7 @@ WORKDIR /app
 COPY . .
 
 EXPOSE 3000
+ENV SQLX_OFFLINE true
 
 RUN cargo build --release
 

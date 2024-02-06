@@ -3,6 +3,10 @@ use std::collections::HashMap;
 
 pub fn get_distributions() -> HashMap<&'static str, Vec<f64>> {
     let mut distributions = HashMap::new();
+    println!(
+        "Working dir: {:?}",
+        std::env::current_dir().unwrap()
+    );
 
     let mut sp500_reader = ReaderBuilder::new()
         .from_path("real_distributions/sp500_dist.csv")

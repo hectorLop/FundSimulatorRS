@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO real_distributions (name, data) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8cdeb7c01bc2ac71fca8038da0a2b4597a7779d1dfd67c02278fb8bf32359594"
+}

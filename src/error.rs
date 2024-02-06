@@ -1,6 +1,14 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+pub enum ApplicationError {
+    #[error(transparent)]
+    ConfigError(#[from] envy::Error),
+    #[error(transparent)]
+    DatabaseError(#[from] sqlx::Error)
+}
+
+#[derive(Error, Debug)]
 pub enum SimulationError {
     #[error("Type error")]
     TypeError(#[from] TypeError),

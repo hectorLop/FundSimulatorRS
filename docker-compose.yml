@@ -4,8 +4,13 @@ services:
   web:
     build: .
     image: fundsimulatorrs
+    volumes:
+      - ./real_distributions:/app/real_distributions
     ports:
       - "3000:3000"
+    env_file:
+      - config/default.env
+
   postgres:
     image: postgres:16
     ports:
